@@ -17,6 +17,7 @@ class TLM:
         reflection_coefficient_left: float = 1.0,
         reflection_coefficient_right: float = 1.0,
         reflection_coefficient_top: float = 1.0,
+        wavelength_delta_x_ratio: float = 10.0,
     ):
         # Dimensions should not be changed after initialization
         self._maximum_frequency = maximum_frequency
@@ -31,7 +32,7 @@ class TLM:
         self.reflection_coefficient_top = reflection_coefficient_top
 
         maximum_wavelength = sound_speed / maximum_frequency
-        self._delta_x = maximum_wavelength / 10
+        self._delta_x = maximum_wavelength / wavelength_delta_x_ratio
         self._delta_t = self._delta_x / self.sound_speed
 
         x_max = int(np.ceil(self.length / self._delta_x))
