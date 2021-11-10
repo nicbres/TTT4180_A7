@@ -31,12 +31,12 @@ class TLM:
         self.reflection_coefficient_right = reflection_coefficient_right
         self.reflection_coefficient_top = reflection_coefficient_top
 
-        maximum_wavelength = sound_speed / maximum_frequency
+        maximum_wavelength = self._sound_speed / maximum_frequency
         self._delta_x = maximum_wavelength / wavelength_delta_x_ratio
-        self._delta_t = self._delta_x / self.sound_speed
+        self._delta_t = 1 / (wavelength_delta_x_ratio * maximum_frequency)
 
-        x_max = int(np.ceil(self.length / self._delta_x))
-        y_max = int(np.ceil(self.width / self._delta_x))
+        self.x_max = int(np.ceil(self._length / self._delta_x))
+        self.y_max = int(np.ceil(self._width / self._delta_x))
 
         # 3rd Dimension:
         #   1x Incident per Branch -> 4x
@@ -46,7 +46,7 @@ class TLM:
         # 4th Dimension:
         #   1x Layer for current values
         #   2x Layer for next values
-        self._layers = np.zeros((x_max, y_max, 9, 2))
+        self._layers = np.zeros((self.x_max, self.y_max, 9, 2))
 
         # reverse lookup table
         self._layer_lookup = {
@@ -78,28 +78,8 @@ class TLM:
         }
 
     @property
-    def sound_speed(self):
-        return self._sound_speed
-
-    @property
-    def length(self):
-        return self._length
-
-    @property
-    def width(self):
-        return self._width
-
-    @property
     def shape(self):
         return np.shape(self._layers[:, :, :, self._current_layer])
-
-    @property
-    def x_max(self):
-        return self.shape[0] - 1
-
-    @property
-    def y_max(self):
-        return self.shape[1] - 1
 
     def get_layer(self, index: Union[str, int]):
         if type(index) == str:
@@ -122,6 +102,7 @@ class TLM:
         inc_3_index = self._layer_lookup["incident_3"]
         src_index = self._layer_lookup["source"]
 
+
         current_vector = np.array(
             [
                 self._layers[x, y, inc_0_index, self._current_layer],  # I0
@@ -143,46 +124,6 @@ class TLM:
 
         return 1 / 2 * np.dot(scattering_matrix, current_vector)
 
-    def _calculate_next_incoming_for_branch(self, x: int, y: int, branch: int) -> float:
-        if (x == 0) and (branch == 0):
-            # left boundary
-            scat_index = self._layer_lookup["scatter_0"]
-            scat_value = self._layers[x, y, scat_index, self._current_layer]
-            return self.reflection_coefficient_left * scat_value
-        elif (x == self.x_max) and (branch == 2):
-            # right boundary
-            scat_index = self._layer_lookup["scatter_2"]
-            scat_value = self._layers[x, y, scat_index, self._current_layer]
-            return self.reflection_coefficient_right * scat_value
-        elif (y == 0) and (branch == 1):
-            # top boundary
-            scat_index = self._layer_lookup["scatter_1"]
-            scat_value = self._layers[x, y, scat_index, self._current_layer]
-            return self.reflection_coefficient_top * scat_value
-        elif (y == self.y_max) and (branch == 3):
-            # bottom boundary
-            scat_index = self._layer_lookup["scatter_3"]
-            scat_value = self._layers[x, y, scat_index, self._current_layer]
-            return self.reflection_coefficient_bottom * scat_value
-
-        scat_index = self._layer_lookup[f"scatter_{(branch + 2) % 4}"]
-        x_offset, y_offset = self._scatter_propagation_lookup[branch]
-        x_scat = x + x_offset
-        y_scat = y + y_offset
-
-        scat_value = self._layers[x_scat, y_scat, scat_index, self._current_layer]
-        return scat_value
-
-    def _calculate_next_incoming(self, x: int, y: int) -> np.array:
-        next_incoming = np.zeros(4)
-
-        for branch in np.arange(4):
-            next_incoming[branch] = self._calculate_next_incoming_for_branch(
-                x=x, y=y, branch=branch
-            )
-
-        return next_incoming
-
     def _update_next_incoming_horizontal(self, x: int):
         scat_layer_0_index = self._layer_lookup["scatter_0"]
         scat_layer_2_index = self._layer_lookup["scatter_2"]
@@ -201,9 +142,9 @@ class TLM:
             scat_index_branch_0 = scat_layer_0_index
             x_branch_0 = 0
             factor_branch_0 = self.reflection_coefficient_left
-        elif x == self.x_max:
+        elif x == (self.x_max - 1):
             scat_index_branch_2 = scat_layer_2_index
-            x_branch_2 = self.x_max
+            x_branch_2 = self.x_max - 1
             factor_branch_2 = self.reflection_coefficient_right
 
         self._layers[x, :, inc_layer_0_index, self._next_layer] = (
@@ -244,9 +185,9 @@ class TLM:
             scat_index_branch_1 = scat_layer_1_index
             y_branch_1 = 0
             factor_branch_1 = self.reflection_coefficient_top
-        elif y == self.y_max:
+        elif y == (self.y_max - 1):
             scat_index_branch_3 = scat_layer_3_index
-            y_branch_3 = self.y_max
+            y_branch_3 = self.y_max - 1
             factor_branch_3 = self.reflection_coefficient_bottom
 
         self._layers[:, y, inc_layer_1_index, self._next_layer] = (
@@ -300,11 +241,9 @@ class TLM:
                 scattering_values = self._calculate_next_scattering(x, y)
                 self._layers[x, y, scat_indices, self._next_layer] = scattering_values
 
-                # incoming_values = self._calculate_next_incoming(x, y)
-                # self._layers[x, y, inc_indices, self._next_layer] = incoming_values
-
         for x in np.arange(self.shape[0]):
             self._update_next_incoming_horizontal(x)
+
         for y in np.arange(self.shape[1]):
             self._update_next_incoming_vertical(y)
 
