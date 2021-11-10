@@ -1,3 +1,6 @@
+import logging
+import time
+
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -12,6 +15,8 @@ def harmonic_function(time: float):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.DEBUG)
+
     sources = [
         Source(coordinates=(0, 0), function=harmonic_function),
     ]
@@ -31,7 +36,9 @@ if __name__ == "__main__":
     im = ax.imshow(res_tlm.get_pressure_layer().T, norm=norm)
 
     def animate(*args, **kwargs):
+        start_time = time.time()
         res_tlm.update()
+        logging.debug(f"Time used for Update: {time.time() - start_time:.6f} s")
         im = ax.imshow(res_tlm.get_pressure_layer().T, norm=norm)
         return im,
 
