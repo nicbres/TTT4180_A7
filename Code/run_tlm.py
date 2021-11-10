@@ -1,6 +1,3 @@
-import logging
-import time
-
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -22,10 +19,7 @@ def impulse_function(time: float):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.DEBUG)
-
     sources = [
-        #Source(coordinates=(0, 0), function=impulse_function),
         Source(coordinates=(0, 0), function=harmonic_function),
     ]
 
@@ -35,29 +29,24 @@ if __name__ == "__main__":
         length=2,
         width=0.2,
         sources=sources,
-        wavelength_delta_x_ratio=10,
-        reflection_coefficient_right=0.1,
+        wavelength_delta_x_ratio=20,
+        reflection_coefficient_right=1.0,
     )
 
     fig, ax = plt.subplots()
 
     norm = colors.Normalize(vmin=-1.0, vmax=1.0)
-    im = ax.imshow(res_tlm.get_pressure_layer().T, norm=norm)
+    im = ax.imshow(res_tlm.get_pressure_layer(), norm=norm)
 
     def animate(*args, **kwargs):
         ax.clear()
-        start_time = time.time()
-        for _ in range(3):
-            res_tlm.update()
-        update_time = time.time()
-        im = ax.imshow(res_tlm.get_pressure_layer().T, norm=norm)
-        draw_time = time.time()
-        logging.debug(f"Update: {update_time - start_time:.6f} s  |  Draw {draw_time - update_time:.6f}")
+        res_tlm.update()
+        im = ax.imshow(res_tlm.get_pressure_layer(), norm=norm)
         return im,
 
 
     ani = animation.FuncAnimation(
-        fig, animate, interval=10,
+        fig, animate, interval=5,
     )
 
     plt.show()
