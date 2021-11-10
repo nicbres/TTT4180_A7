@@ -1,3 +1,9 @@
+"""Provides a class to use as sources for TLM.
+
+This class can be provided with a callable that generates the amplitudes
+to pipe into the TLM. Additionally coordinates can be given to place this
+source somewhere else than the origin.
+"""
 from typing import Callable, Tuple
 
 import numpy as np

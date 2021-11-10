@@ -18,8 +18,8 @@ class TestTLM:
     @pytest.mark.parametrize(
         "freq, sound_speed, length, width, expected_shape",
         [
-            [1, 10, 100, 10, (100, 10, 9)],  # Simple test values
-            [2000, 343, 2, 0.2, (117, 12, 9)],  # Assignment values
+            [1, 10, 100, 10, (100, 10, 9, 2)],  # Simple test values
+            [2000, 343, 2, 0.2, (117, 12, 9, 2)],  # Assignment values
         ],
     )
     def test_given_initial_values_then_shape_as_expected(
@@ -38,22 +38,7 @@ class TestTLM:
             width=width,
         )
 
-        assert res_tlm.shape == ref_shape
-
-    @staticmethod
-    def test_given_initial_values_when_get_layer_then_shape_as_expected():
-        ref_shape = (117, 12)
-
-        res_tlm = TLM(
-            maximum_frequency=2000,
-            sound_speed=343,
-            length=2,
-            width=0.2,
-        )
-
-        res_shape = np.shape(res_tlm.get_layer("incident_1"))
-
-        assert res_shape == ref_shape
+        assert res_tlm.layers.shape == ref_shape
 
     @staticmethod
     def test_given_no_source_when_update_then_no_error():
@@ -90,7 +75,7 @@ class TestTLM:
 
         sources = [Source(coordinates=(0, 0), function=harmonic_function)]
 
-        ref_shape = (117, 12)
+        ref_shape = (12, 117)
 
         res_tlm = TLM(
             maximum_frequency=2000,
