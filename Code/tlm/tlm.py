@@ -81,6 +81,14 @@ class TLM:
     def shape(self):
         return np.shape(self._layers[:, :, :, self._current_layer])
 
+    @property
+    def incoming_indices(self):
+        return [ self._layer_lookup[f"incident_{i}"] for i in np.arange(4) ]
+
+    @property
+    def scattering_indices(self):
+        return [ self._layer_lookup[f"scatter_{i}"] for i in np.arange(4) ]
+
     def get_layer(self, index: Union[str, int]):
         if type(index) == str:
             index = self._layer_lookup[index]
@@ -95,7 +103,7 @@ class TLM:
                 current_time
             )
 
-    def _calculate_next_scattering(self, x: int, y: int) -> np.array:
+    def _update_next_scattering(self, x: int) -> np.array:
         inc_0_index = self._layer_lookup["incident_0"]
         inc_1_index = self._layer_lookup["incident_1"]
         inc_2_index = self._layer_lookup["incident_2"]
@@ -105,11 +113,11 @@ class TLM:
 
         current_vector = np.array(
             [
-                self._layers[x, y, inc_0_index, self._current_layer],  # I0
-                self._layers[x, y, inc_1_index, self._current_layer],  # I1
-                self._layers[x, y, inc_2_index, self._current_layer],  # I2
-                self._layers[x, y, inc_3_index, self._current_layer],  # I3
-                self._layers[x, y, src_index, self._next_layer],  # S
+                self._layers[x, :, inc_0_index, self._current_layer],  # I0
+                self._layers[x, :, inc_1_index, self._current_layer],  # I1
+                self._layers[x, :, inc_2_index, self._current_layer],  # I2
+                self._layers[x, :, inc_3_index, self._current_layer],  # I3
+                self._layers[x, :, src_index, self._next_layer],  # S
             ]
         )
 
@@ -122,7 +130,11 @@ class TLM:
             ]
         )
 
-        return 1 / 2 * np.dot(scattering_matrix, current_vector)
+        self._layers[x, :, self.scattering_indices, self._next_layer] = (
+                1
+                / 2
+                * np.dot(scattering_matrix, current_vector)
+        )
 
     def _update_next_incoming_horizontal(self, x: int):
         scat_layer_0_index = self._layer_lookup["scatter_0"]
@@ -237,11 +249,7 @@ class TLM:
 
         # calculate next step incoming and scattering
         for x in np.arange(self.shape[0]):
-            for y in np.arange(self.shape[1]):
-                scattering_values = self._calculate_next_scattering(x, y)
-                self._layers[x, y, scat_indices, self._next_layer] = scattering_values
-
-        for x in np.arange(self.shape[0]):
+            self._update_next_scattering(x)
             self._update_next_incoming_horizontal(x)
 
         for y in np.arange(self.shape[1]):
