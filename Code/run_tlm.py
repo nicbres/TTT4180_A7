@@ -29,19 +29,21 @@ if __name__ == "__main__":
         length=2,
         width=0.2,
         sources=sources,
-        wavelength_delta_x_ratio=20,
+        wavelength_delta_x_ratio=10,
         reflection_coefficient_right=1.0,
     )
 
     fig, ax = plt.subplots()
 
-    norm = colors.Normalize(vmin=-1.0, vmax=1.0)
+    norm_max = 0.05
+    norm = colors.Normalize(vmin=-norm_max, vmax=norm_max)
     im = ax.imshow(res_tlm.get_pressure_layer(), norm=norm)
 
     def animate(*args, **kwargs):
+        for _ in np.arange(1):
+            res_tlm.update()
         ax.clear()
-        res_tlm.update()
-        im = ax.imshow(res_tlm.get_pressure_layer(), norm=norm)
+        im = ax.imshow(res_tlm.get_pressure_layer()[::-1,:], norm=norm)
         return im,
 
 

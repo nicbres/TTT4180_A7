@@ -109,9 +109,8 @@ class TLM:
         current_time = self.step_count * self._delta_t
 
         for src in self.sources:
-            self.layers[src.x, src.y, src_index, self._next_layer] = src.value(
-                current_time
-            )
+            amplitude = src.value(current_time)
+            self.layers[src.x, src.y, src_index, self._next_layer] = amplitude
 
     def _update_next_scattering(self, x: int) -> np.array:
         inc_0_index = self._layer_lookup["incident_0"]
@@ -141,9 +140,8 @@ class TLM:
 
         # Computes all scattering values for a whole x-vector from the x,y plane
         # by using multidimensional np.dot()
-        self.layers[x, :, self.scattering_indices, self._next_layer] = (
-            1 / 2 * np.dot(scattering_matrix, current_vector)
-        )
+        result = 1 / 2 * np.dot(scattering_matrix, current_vector)
+        self.layers[x, :, self.scattering_indices, self._next_layer] = result
 
     def _update_next_incident_horizontal(self, x: int):
         # prepares all necessary indices
@@ -273,10 +271,16 @@ class TLM:
             A numpy array with a shape corresponding to delta_x and the given physical
             length and width.
         """
-        all_indices = np.concatenate(
-            (
-                self.incident_indices,
-                self.scattering_indices,
-            )
+        incident_pressure = np.sum(
+            self.layers[:, :, self.incident_indices, self._current_layer],
+            axis=2,
         )
-        return np.sum(self.layers[:, :, all_indices, self._current_layer], axis=2).T
+        """
+        scattering_pressure = (-1.) * np.sum(
+            self.layers[:, :, self.scattering_indices, self._current_layer],
+            axis=2,
+        )
+
+        return np.sum(np.dstack((incident_pressure, scattering_pressure)), axis=2).T 
+        """
+        return np.sum(np.dstack((incident_pressure, self.layers[:,:,8,self._current_layer])), axis=2).T
