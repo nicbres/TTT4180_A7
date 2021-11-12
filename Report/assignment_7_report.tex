@@ -349,8 +349,32 @@ Which are given by
 \end{equation}
 
 \subsection{Results}
+\begin{figure}[H]
+    \begin{subfigure}[]{75mm}
+        \centering
+        \includegraphics[width=75mm]{./Images/pipe_evolution_r1.png}
+        \caption{Right boundary with R $= 1$}
+        \label{fig_pipe_evo_r1}
+    \end{subfigure}
+    \begin{subfigure}[]{75mm}
+        \centering
+        \includegraphics[width=75mm]{./Images/pipe_evolution_r01.png}
+        \caption{Right boundary with R $= 0.1$}
+        \label{fig_pipe_evo_r01}
+    \end{subfigure}
+    \caption{Evolution of the wave in the pipe over time}
+    \label{fig_pipe_evolution}
+\end{figure}
 
-\subsection{Discussion}
+From Fig. \ref{fig_pipe_evolution} we can observe how the wave propagates when a sine wave source
+is placed in the bottom left corner with $500 \text{Hz}$.
+The first image (Fig. \ref{fig_pipe_evo_r1}) shows the case where the right boundary is a rigid wall.
+In that case we can observe that a mode is established with standing nodes.
+The wave's minima and maxima flip according to the source's amplitude.
+
+In the case that the right boundary has a reflection coefficient of $0.1$ (Fig. \ref{fig_pipe_evo_r01}
+the behavior is slightly different.
+Instead of standing nodes, they now move toward the pipe end corresponding to source's excitation.
 
 \section{TLMfig}
 \subsection{Propagation in free space}
@@ -549,6 +573,14 @@ that's seen in Fig. \ref{fig_3_3_loss}.
 \section{Discussion}
 
 \subsection{Python}
+\subsubsection{Implementation}
+The current implementation still seems somewhat faulty, when comparing the results
+with TLMfig.
+Debugging faults in the implementation took up more time than expected.
+Due to that and not being able to completely fix all issues with the code, the frequency
+response has not been implemeted yet.
+And is therefore missing in the report.
+
 \subsubsection{Matplotlib}
 Using this library to plot the animation had some pitfalls.
 The library uses a drawing buffer, which just fills over time.
@@ -590,11 +622,6 @@ E.g. the button label for placing mics updates to $1$ when a number is changed i
 then \textit{not} validated with the enter key, followed by clicking the button to place microphones.
 It doesn't revert back and stays at the same number, which is $1$.
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=35mm]{./Images/tlm_fig_button_label_good.png}
-    \caption{TLMfig button label before bug}
-\end{figure}
 \begin{figure}[H]
     \centering
     \includegraphics[width=35mm]{./Images/tlm_fig_button_label_bad.png}
