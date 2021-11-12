@@ -20,6 +20,8 @@
 \usepackage{graphicx}
 \usepackage{algorithm}
 \usepackage[noend]{algpseudocode}
+\usepackage{caption}
+\usepackage{subcaption}
 
 \makeatletter\@ifundefined{date}{}{\date{}}
 \makeatother
@@ -50,36 +52,32 @@ This assignment in the Technical Acoustics course (TTT4180) revolves around
 the transmission-line matrix (TLM) simulation technique used for acoustic waves
 and studying a variety of acoustic wave propagation scenarios by simulation.
 
-The report is split into two parts, where the first part provides a brief
-description of methods used for an own implementation of TLM simulation in Python.
-After, some results are presented and discussed, which were generated from said
-implementation.
+The report is split into two parts, where the first part contains a 
+description of the methods used to implement a TLM simulation in Python.
+After that, some results generated with said implementation are presented and discussed.
 
-The second part contains further analyisis of sound pressure
-with respect to distance, surface reflections, and the effect of a noise screen
-on the sound pressure level.
-Instead of using the own implementation, this part uses a given Matlab implementation
-called TLMfig.
+The second part delves deeper into analysis of wave propagation, specifically the sound pressure
+level with respect to distance, surface reflections, and the effect of a noise screen.
+This part uses a provided GUI tool called TLMfig that implements TLM in Matlab.
 
 Lastly, the report gives a brief outlook with a discussion of difficulties
-encountered during this assignment and final conclusions.
-% Possibly add difficulties and gained knowledge
+encountered during this assignment with some additional final conclusions.
 \end{abstract}
 
 
 \section{Wave Propagation in a 2D Pipe}
-To analyze the propagation of a wave in a pipe a 2D TLM implementation was needed.
+To analyze the propagation of a wave in a pipe, a 2D TLM implementation was needed.
 Python was chosen, as it provides all of the necessary features in libraries such
 as Numpy \cite{NumpyManual} for arrays and linear algebra and Matplotlib \cite{Matplotlib}
 for plotting the results.
 
 \subsection{Methods}
 \subsubsection{TLM}
-The implementation is strongly based on the article provided with the assignment
+The implementation is strongly based on the article provided with the assignment,
 that describes TLM \cite{KagawaTLM}.
-Nevertheless the most significant parts will be described in this section.
+Nevertheless the most important parts will be described in this section.
 
-The main idea is to replace the continuous space with a grid of so-called nodes,
+The main concept is to replace the continuous space with a grid of so-called nodes,
 as shown in Fig. \ref{fig_tlm_mesh}.
 
 \begin{figure}[H]
@@ -91,21 +89,23 @@ as shown in Fig. \ref{fig_tlm_mesh}.
 
 Each node can be represented as a pipe system with four branches.
 And the nodes will be indexed with $i, j$ referencing their position on the grid.
-Each branch will contain a superposition of an incident and scattering pressure waves.
-These are denoted as $_{k}I_{i,j}^{n}$ and $_{k}S_{i,j}^{n}$ respectively, where
+The branches are modelled as pipes for the propagation of plane waves.
+Scattering or outgoing waves are denoted with $_{k}S_{i,j}^{n}$ and incident waves
+with $_{k}I_{i,j}^{n}$ respectively.
 $k$ is the iteration count and $n$ is the branch index as shown in Fig.
 \ref{fig_tlm_node}.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=50mm]{./Images/tlm_node.png}
+    \includegraphics[width=50mm]{./Images/tlm_node_incoming.png}
     \caption{TLM node showing incident and outgoing waves as well as branch indexing}
     \label{fig_tlm_node}
 \end{figure}
 
-The incident waves of iteration $k$ will be turned into the scattering waves of
-iteration $k+1$.
-This can be written as
+Due to the impedance discontinuity at the node the incident waves of iteration $k$
+will be turned into the scattering waves of iteration $k+1$.
+
+Which can be written as
 
 \begin{equation}
 \begin{aligned}
@@ -116,7 +116,7 @@ This can be written as
 \end{aligned}
 \end{equation}
 
-Which can be rewritten using the \textit{scattering matrix} as follows
+This can then be rewritten using the \textit{scattering matrix} as follows
 
 \begin{equation}
 \begin{bmatrix}
@@ -142,20 +142,15 @@ Which can be rewritten using the \textit{scattering matrix} as follows
 \label{eq_scattering_matrix}
 \end{equation}
 
-The factor $\frac{1}{2}$ is due to the fact that we're considering the propagation of pressure waves.
-An incident wave will evenly distribute the energy over the four branches, resulting
-in a factor of $\frac{1}{4}$ with respect to the energy.
-Given
-\begin{equation}
-    W_p = \frac{p_{rms}^{2}}{4K},
-\end{equation}
-which shows the square relationship between energy and pressure.
-We can establish that a factor $\frac{1}{4}$ in energy to be a factor of $\frac{1}{2}$ with respect to
-pressure.
+The factor $\frac{1}{2}$ is due to the fact that the energy is split evenly to four branches.
+Resulting in a factor of $\frac{1}{4}$ with respect to the energy.
+Due to $W \propto p^{2}$ we can establish a factor of $\frac{1}{2}$ for the
+pressure magnitude.
 
-
-The incident waves of the next iteration are the scattering waves of the respective
-branches of the neighboring branches, which is shown in Fig. \ref{fig_tlm_nodes_transmission}.
+The incident waves of the next iteration are related to the scattering waves generated by the
+incident waves of the current iteration.
+The scattering waves propagate to the branches of the neighboring nodes, which is shown in
+Fig. \ref{fig_tlm_nodes_transmission}.
 
 \begin{figure}[H]
     \centering
@@ -176,8 +171,8 @@ Mathematically this can be written with the following equations
 \label{eq_propagation}
 \end{equation}
 
-Now these relations only count for all the nodes, that are not part of any of the boundaries.
-At the boundary the next iteration's incident wave is given by the branch's current
+These relations only count for all the nodes, that are not part of any of the boundaries.
+At the boundary the next iteration's incident wave is given by the branch's
 scattering wave and the boundary's reflection coefficient $R_{m}$.
 
 \begin{equation}
@@ -185,11 +180,11 @@ scattering wave and the boundary's reflection coefficient $R_{m}$.
     \label{eq_boundary_propagation}
 \end{equation}
 
-The pressure can then be calculated by the superposition of all the waves in the node,
+The pressure can be calculated by the superposition of all the incident waves in the node,
 as given with
 
 \begin{equation}
-    _{k}p_{i,j} = \sum_{i=0}^{3} {}_kI_{i,j}^{n} - \sum_{i=0}^{3} {}_kS_{i,j}^{n}
+    _{k}p_{i,j} = \sum_{i=0}^{3} {}_kI_{i,j}^{n}
 \end{equation}
 
 \subsubsection{Python Implementation}
@@ -231,22 +226,20 @@ this also gives the timestep with
 The easiest way to represent the different branches and differentiate between incident
 and scattering wave is by using a multidimensional array.
 The first two dimensions are the spatial integer dimensions $M\times N$.
-The third dimension is used to stack one grid per branch for each incident and scattering
-waves, as shown in Fig. \ref{fig_python_layers}.
-An additional layer is added in the third dimension to represent source amplitudes placed
-on the grid, which are written as $_{k}G_{i,j}$.
-So the resulting array has the shape $\left(M, N, 9\right)$.
+The third dimension is used to stack one grid for each branch waves, as shown in Fig. \ref{fig_python_layers}.
+So the resulting array has the shape $\left(M, N, 4\right)$.
+An additional layer is used to store source amplitudes on the grid, which are written as $_{k}G_{i,j}$.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=75mm]{./Images/python_layers_bw.png}
+    \includegraphics[width=60mm]{./Images/python_layers.png}
     \caption{Depiction of the layers used in the implementation}
     \label{fig_python_layers}
 \end{figure}
 
 To have efficient computation two of these multidimensional arrays are being used,
 where one corresponds to the current step and the other to the next iteration.
-With that the values can easily be updated without generating temporary objects.
+With that, the values can easily be updated without generating temporary objects.
 The full shape of the array is then given with $\left(M, N, 9, 2\right)$.
 
 Eq. \ref{eq_scattering_matrix} has to be rewritten to allow incorporating the
@@ -277,17 +270,9 @@ mentioned source layer.
 \label{eq_source_scattering_matrix}
 \end{equation}
 
-Which will add the sources' amplitudes to the corresponding scattering waves.
+Which will add the sources' amplitudes to the corresponding scattering wave values.
 
-Updating the incident waves can be done as described in the TLM chapter.
-
-Using a feature of NumPy that allows matrix multiplication for multidimensional
-arrays, it's possible to compute all scattering values using the \textit{scattering matrix}
-for a whole $\left(M, 1\right)$ or $\left(1, N\right)$ vector at once.
-Updating the incident waves can also be achieved with one iteration in each the x-direction
-and the y-direction, updating the horizontal and vertical propagation respectively.
-This approach allows reducing the run time complexity to be $\mathcal{O}\left(2N\right)$
-in the worst case.
+Updating the incident waves can be done just as described in the TLM chapter.
 
 To update the nodes' values for one iteration the following steps are needed:
 \begin{algorithm}[H]
@@ -297,20 +282,20 @@ To update the nodes' values for one iteration the following steps are needed:
     \For{all sources}
         \State update source amplitude
     \EndFor
-    \For{i \textbf{in} M}\Comment{iterate over x-direction}
-        \State compute next scattering values
-        \State compute horizontal incident propagation
+    \For{m \textbf{in} M}
+        \For{n \textbf{in} N}
+            \State compute current scattering wave values
+        \EndFor
     \EndFor
-    \For{i \textbf{in} N}\Comment{iterate over y-direction}
-        \State compute vertical incident propagation
+    \For{m \textbf{in} M}
+        \For{n \textbf{in} N}
+            \State update incident waves of next iteration
+        \EndFor
     \EndFor
     \State update iteration step count
     \EndProcedure
 \end{algorithmic}
 \end{algorithm}
-
-And calculating the pressure values can be done by summing up the incident and
-scattering layers.
 
 \subsection{Calculations}
 The pipe dimensions that are used within this assignment are $\text{L}=2\text{m}$
@@ -352,7 +337,8 @@ Resulting in the following list of modes:
 \end{tabular}
 \end{center}
 
-From this we can conlude that there should not be a mode in y-direction below $857.5\text{Hz}$.
+From this we can conlude that there should not be a mode in y-direction below $857.5\text{Hz}$
+and only plane waves should be present.
 
 All the modes where $m=0$ can be considered the resonance frequencies of the closed-closed
 pipe \cite{PipesResonators}.
@@ -368,20 +354,26 @@ Which are given by
 
 \section{TLMfig}
 \subsection{Propagation in free space}
+\subsubsection{Description}
 To analyze the behavior of the amplitude of the wave with respect to distance a source and
 microphones are placed along one line, as shown in Fig. \ref{fig_3_1_example}.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=60mm]{./Images/tlmfig_3_1.png}
-    \caption{Example for source and microphone setup to analyze propagation in free space}
+    \caption{Simplified example for source and microphone setup to analyze propagation in free space}
     \label{fig_3_1_example}
 \end{figure}
 
 In the actual simulation the source was placed in the coordinates $\left(1,50\right)$ and
-the 31 microphones where placed at $\left(3n+2,50\right)$, where $n\in\left[0,30\right]$.
-The source was configured as a sine with amplitude one and the signal arrivals at the
-microphones can be seen in Fig. \ref{fig_3_1_3D}.
+the 30 microphones where placed at $\left(3n+2,50\right)$, where $n\in\left[0,30\right[$.
+The source was configured to produce a sine wave with an amplitude of one and a
+number of cells per wavelength (NCPW) of $15$.
+
+\subsubsection{Results}
+The signal arrivals at the microphones can be seen in Fig. \ref{fig_3_1_3D}.
+The microphones with a higher index are further away.
+This is also visible through the delayed arrivals at the start.
 
 \begin{figure}[H]
     \centering
@@ -392,8 +384,16 @@ microphones can be seen in Fig. \ref{fig_3_1_3D}.
 
 With these signals we can calculate the sound pressure levels (SPLs) and plot
 them against the distance, which is depicted in Fig. \ref{fig_3_1_spl}.
-In the plot we can roughly see the expected $1/\sqrt{r}$ behavior of the
-cylindrical spreading.
+The calculation was performed by averaging the peak amplitudes and then
+referencing against $p_0 = 20\mu\text{Pa}$.
+
+\begin{equation}
+    SPL = 20\log_{10}\left(\frac{p_{peak,mean}}{\sqrt{2}\cdot p_{0}}\right)
+\end{equation}
+
+In the plot shown in Fig. \ref{fig_3_1_spl} we can roughly see the expected
+decay over distance.
+% Possibly add fitted 1/r curve to plot
 
 \begin{figure}[H]
     \centering
@@ -403,12 +403,14 @@ cylindrical spreading.
 \end{figure}
 
 \subsection{Reflection from surface}
+\subsubsection{Description}
 This next simulation is intended to study the behavior of the wave reflected from
 surfaces with different reflection coefficient.
 For this a surface was placed at the bottom in TLMfig.
-The source was placed at $\left(50,59\right)$ and the 21 microphones were
+The source was placed at $\left(50,59\right)$ and the 20 microphones were
 placed at around the same height with the following coordinates
-$\left(4n+10,60\right)$, where $n\in\left[0,20\right]$.
+$\left(4n+10,60\right)$, where $n\in\left[0,20\right[$.
+The source was set to generate a gaussian pulse with an amplitude of one.
 
 \begin{figure}[H]
     \centering
@@ -417,28 +419,134 @@ $\left(4n+10,60\right)$, where $n\in\left[0,20\right]$.
     \label{fig_3_2_example}
 \end{figure}
 
+\subsubsection{Results}
+The signal arrivals are shown in the two plots in Fig. \ref{fig_3_2_3d}.
+They show the two received pulses for different reflection coefficients, where
+the first pulse is the direct and the second the reflected one.
+
+\begin{figure}[H]
+    \begin{subfigure}[]{75mm}
+        \centering
+        \includegraphics[width=75mm]{./Images/3_2_r_1_3D.png}
+        \caption{Reflection coefficient = 1}
+        \label{fig_3_2_3d_r_1}
+    \end{subfigure}
+    \begin{subfigure}[]{75mm}
+        \centering
+        \includegraphics[width=75mm]{./Images/3_2_r_0.5_3D.png}
+        \caption{Reflection coefficient = 0.5}
+        \label{fig_3_2_3d_r_05}
+    \end{subfigure}
+    \caption{Signals received at the microphone array with different reflection coefficients}
+    \label{fig_3_2_3d}
+\end{figure}
+
+Using this data we can plot the loss on the reflected pulse using the direct pulse as a
+reference.
+
+\begin{equation}
+    \text{Loss} = -20\log_{10}\left(\frac{p_{peak,reflected}}{p_{peak,direct}}\right)
+\end{equation}
+
+This is plotted for all the microphones in the array and displayed in Fig. \ref{fig_3_2_plot}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=75mm]{./Images/3_2_2D.png}
+    \caption{The loss from direct to reflected pulse for the two reflection coefficients}
+    \label{fig_3_2_plot}
+\end{figure}
+
+It can be observed that halving the reflection coefficient of the surface results in
+a loss of $\approx 6\text{dB}$.
+
 
 \subsection{Effect of noise screen}
-The last simulation is intended to analyze the effect of a noise screen.
-In this case the noise screen was simulated as a perfectly rigid wall.
-The simulation configuration can be seen in Fig. \ref{fig_3_3_example}.
-The ground has a reflection coefficient of $0.95$ and the source is set to noise with varying
-number of cells per wavelength to achieve low- and high-frequency noise.
+\subsubsection{Description}
+The last simulation is used to analyze the effect of a noise screen.
+In this case the noise screen was simulated as a perfectly rigid wall and
+the ground having a reflection coefficient of $0.95$.
+The source was setup to produce a sine wave with a NCPW of $15$ and $45$ respectively,
+as well as just noise.
+Using different NCPW values provides insight in frequency behavior, where a low NCPW
+corresponds to higher frequencies.
+The simulation arrangement can be seen in Fig. \ref{fig_3_3_example}.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=75mm]{./Images/tlmfig_3_3.png}
-    \caption{An exemplary setup of source and microphone for the noise screen simulation, with distances given in meters}
+    \caption{A simplified diagram of source and microphone arrangement for the noise screen simulation}
     \label{fig_3_3_example}
 \end{figure}
 
 The exact setup is given by the ground being at height of $10$ cells, the source at $\left(10,12\right)$, the
-screen expands from $\left(18,10\right)$ to $\left(18,22\right)$, and the eleven microphones have the coordinates
-$\left(4n+20,16\right)$ with $n\in\left[0,10\right]$.
+screen expands from $\left(18,10\right)$ to $\left(18,22\right)$, and the ten microphones have the coordinates
+$\left(4n+20,16\right)$ with $n\in\left[0,10\right[$.
 To analyze the effect of the screen the simulation is run once with and once without screen.
-\subsection{Discussion}
 
-\section{Conclusion}
+\subsubsection{Results}
+In Fig. \ref{fig_3_3_3d} an example is given where the provided source type was noise.
+The data from these two simulations per source can be used to calculate the \textit{insertion loss}.
+The loss that results from adding the screen is given by
+
+\begin{equation}
+    \text{Insertion Loss} = 20\log_{10}\left(\frac{p_{rms,direct}}{p_{rms,screen}}\right)
+\end{equation}
+
+\begin{figure}[H]
+    \begin{subfigure}[]{75mm}
+        \centering
+        \includegraphics[width=75mm]{./Images/3_3_noise_noise_screen_3D.png}
+        \caption{with screen}
+        \label{fig_3_3_screen}
+    \end{subfigure}
+    \begin{subfigure}[]{75mm}
+        \centering
+        \includegraphics[width=75mm]{./Images/3_3_noise_no_screen_3D.png}
+        \caption{without screen}
+        \label{fig_3_3_no_screen}
+    \end{subfigure}
+    \caption{Example of signals received at the microphone array with and without noise screen using a noise source}
+    \label{fig_3_3_3d}
+\end{figure}
+
+The calculation for the insertion loss was performed for all the variation of
+sound sources and can be seen in Fig. \ref{fig_3_3_loss}.
+One can observe that the noise screen generally provides a sound reduction.
+It is the least effective for low frequency sine waves (NCPW $= 45$).
+And the effectiveness seems to decrease over distance.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=75mm]{./Images/3_3_insertion_loss.png}
+    \caption{Insertion loss for varying source types resulting from introducing a noise screen}
+    \label{fig_3_3_loss}
+\end{figure}
+
+In the case of NCPW $= 15$ however, we can clearly see that, a strong attenuation takes
+place at a certain distance after the screen.
+This strong attenuation can be explained with an interference pattern that is
+generated after the screen, which is displayed in Fig. \ref{fig_3_3_interference}.
+We can see that with high frequency (NCPW $=15$) there's a beam of a local minimum that will
+cross the height of the microphone array, resulting in the strong attenuation
+that's seen in Fig. \ref{fig_3_3_loss}.
+
+\begin{figure}[H]
+    \begin{subfigure}[]{75mm}
+        \centering
+        \includegraphics[width=50mm]{./Images/3_3_ncpw_15.png}
+        \caption{NCPW $= 15$}
+    \end{subfigure}
+    \begin{subfigure}[]{75mm}
+        \centering
+        \includegraphics[width=50mm]{./Images/3_3_ncpw_45.png}
+        \caption{NCPW $= 45$}
+    \end{subfigure}
+    \caption{Interference pattern after the noise screen for the two NCPW settings}
+    \label{fig_3_3_interference}
+\end{figure}
+
+\section{Discussion}
 
 \subsection{Python}
 \subsubsection{Matplotlib}
@@ -454,15 +562,15 @@ Given that this might only be the case for the author's setup, which consisted
 of a Linux machine without a dedicated GPU.
 
 \subsubsection{Placing Objects}
-Firstly, there are no coordinates for the cursor while drawing, which is only
-a minor issue though.
+Firstly, there are no coordinates for the cursor while drawing.
 If this was the case placing objects in the plane would be simplified a lot.
 A workaround is drawing lines as helpers and erasing them to all but one pixel
 at the edge of the plane.
+Nevertheless, this is only a minor issue.
 
 \subsubsection{Exporting received signals}
 Secondly, exporting the received data is not straightforward and this has some
-overlap with the third problem.
+overlap with the third observation.
 Nevertheless possibilites could be to export the data which is plotted into the
 Matlab workspace or generate a .mat file.
 There's the option to export the configuration and grabbing the data from there,
@@ -477,19 +585,19 @@ Therefore it cannot be used to re-run the stored configuration, making it imposs
 to reproduce results without re-drawing the setup.
 
 \subsubsection{GUI usage}
-There are some additional behaviors that are unexpected.
+There are some additional unexpected behaviors.
 E.g. the button label for placing mics updates to $1$ when a number is changed in the field,
 then \textit{not} validated with the enter key, followed by clicking the button to place microphones.
 It doesn't revert back and stays at the same number, which is $1$.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=45mm]{./Images/tlm_fig_button_label_good.png}
+    \includegraphics[width=35mm]{./Images/tlm_fig_button_label_good.png}
     \caption{TLMfig button label before bug}
 \end{figure}
 \begin{figure}[H]
     \centering
-    \includegraphics[width=45mm]{./Images/tlm_fig_button_label_bad.png}
+    \includegraphics[width=35mm]{./Images/tlm_fig_button_label_bad.png}
     \caption{TLMfig button label after bug}
 \end{figure}
 
@@ -502,13 +610,15 @@ aware of this.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=45mm]{./Images/tlm_fig_updating_lines.png}
+    \includegraphics[width=35mm]{./Images/tlm_fig_updating_lines.png}
     \caption{Line drawing input box}
 \end{figure}
 
-\subsubsection{Final Words}
-Even with all the beforementioned issues while using TLMfig, the GUI is largely helpful
-for simulating wave propagation and analzying the behavior as reflections for example.
+\subsubsection{Conclusion}
+All the observed issues are only hindering usability.
+TLMfig otherwise seems to work as expected and the GUI is largely helpful
+for simulating wave propagation and analzying propagation behavior in
+various settings.
 
 
 \section{References}
