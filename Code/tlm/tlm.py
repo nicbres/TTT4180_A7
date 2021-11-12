@@ -68,27 +68,14 @@ class TLM:
         self.y_max = int(np.ceil(self._width / self._delta_x))
 
         # 3rd Dimension:
-        #   1x Incident per Branch -> 4x
-        #   1x Scattering per Branch -> 4x
-        #   1x Source Layer
-        #   => 9x Layers
+        #   1x Layer per Branch -> 4x
+        #   => 4x Layers
         # 4th Dimension:
         #   1x Layer for current values
-        #   2x Layer for next values
-        self.layers = np.zeros((self.x_max, self.y_max, 9, 2))
-
-        # layer indices lookup table
-        self._layer_lookup = {
-            "incident_0": 0,
-            "incident_1": 1,
-            "incident_2": 2,
-            "incident_3": 3,
-            "scattering_0": 4,
-            "scattering_1": 5,
-            "scattering_2": 6,
-            "scattering_3": 7,
-            "source": 8,
-        }
+        #   1x Layer for next values
+        self.layers = np.zeros((self.x_max, self.y_max, 4, 2))
+        self._scatter_layers = np.zeros((self.x_max, self.y_max, 4))
+        self._source_layer = np.zeros((self.x_max, self.y_max))
 
         self.step_count = 0
         self._current_layer = self.step_count
@@ -96,36 +83,21 @@ class TLM:
 
         self.sources = sources
 
-    @property
-    def incident_indices(self) -> np.array:
-        return np.array([self._layer_lookup[f"incident_{i}"] for i in np.arange(4)])
-
-    @property
-    def scattering_indices(self) -> np.array:
-        return np.array([self._layer_lookup[f"scattering_{i}"] for i in np.arange(4)])
-
     def _update_source_layer(self):
-        src_index = self._layer_lookup["source"]
         current_time = self.step_count * self._delta_t
 
         for src in self.sources:
             amplitude = src.value(current_time)
-            self.layers[src.x, src.y, src_index, self._next_layer] = amplitude
+            self._source_layer[src.x, src.y] = amplitude
 
-    def _update_next_scattering(self, x: int) -> np.array:
-        inc_0_index = self._layer_lookup["incident_0"]
-        inc_1_index = self._layer_lookup["incident_1"]
-        inc_2_index = self._layer_lookup["incident_2"]
-        inc_3_index = self._layer_lookup["incident_3"]
-        src_index = self._layer_lookup["source"]
-
+    def _compute_scattering(self, x: int, y: int) -> np.array:
         current_vector = np.array(
             [
-                self.layers[x, :, inc_0_index, self._current_layer],  # I0
-                self.layers[x, :, inc_1_index, self._current_layer],  # I1
-                self.layers[x, :, inc_2_index, self._current_layer],  # I2
-                self.layers[x, :, inc_3_index, self._current_layer],  # I3
-                self.layers[x, :, src_index, self._next_layer],  # S
+                self.layers[x, y, 0, self._current_layer],  # I0
+                self.layers[x, y, 1, self._current_layer],  # I1
+                self.layers[x, y, 2, self._current_layer],  # I2
+                self.layers[x, y, 3, self._current_layer],  # I3
+                self._source_layer[x, y],  # S
             ]
         )
 
@@ -141,15 +113,15 @@ class TLM:
         # Computes all scattering values for a whole x-vector from the x,y plane
         # by using multidimensional np.dot()
         result = 1 / 2 * np.dot(scattering_matrix, current_vector)
-        self.layers[x, :, self.scattering_indices, self._next_layer] = result
+        self._scatter_layers[x, y, :] = result
 
     def _update_next_incident_horizontal(self, x: int):
         # prepares all necessary indices
-        scat_layer_0_index = self._layer_lookup["scattering_0"]
-        scat_layer_2_index = self._layer_lookup["scattering_2"]
+        scat_layer_0_index = 0
+        scat_layer_2_index = 2
 
-        inc_layer_0_index = self._layer_lookup["incident_0"]
-        inc_layer_2_index = self._layer_lookup["incident_2"]
+        inc_layer_0_index = 0
+        inc_layer_2_index = 2
 
         scat_index_branch_0 = scat_layer_2_index
         scat_index_branch_2 = scat_layer_0_index
@@ -173,31 +145,29 @@ class TLM:
         # update the actual branch layers
         self.layers[x, :, inc_layer_0_index, self._next_layer] = (
             factor_branch_0
-            * self.layers[
+            * self._scatter_layers[
                 x_branch_0,
                 :,
                 scat_index_branch_0,
-                self._current_layer,
             ]
         )
 
         self.layers[x, :, inc_layer_2_index, self._next_layer] = (
             factor_branch_2
-            * self.layers[
+            * self._scatter_layers[
                 x_branch_2,
                 :,
                 scat_index_branch_2,
-                self._current_layer,
             ]
         )
 
     def _update_next_incident_vertical(self, y: int):
         # prepares all necessary indices
-        scat_layer_1_index = self._layer_lookup["scattering_1"]
-        scat_layer_3_index = self._layer_lookup["scattering_3"]
+        scat_layer_1_index = 1
+        scat_layer_3_index = 3
 
-        inc_layer_1_index = self._layer_lookup["incident_1"]
-        inc_layer_3_index = self._layer_lookup["incident_3"]
+        inc_layer_1_index = 1
+        inc_layer_3_index = 3
 
         scat_index_branch_1 = scat_layer_3_index
         scat_index_branch_3 = scat_layer_1_index
@@ -221,21 +191,19 @@ class TLM:
         # update the actual branch layers
         self.layers[:, y, inc_layer_1_index, self._next_layer] = (
             factor_branch_1
-            * self.layers[
+            * self._scatter_layers[
                 :,
                 y_branch_1,
                 scat_index_branch_1,
-                self._current_layer,
             ]
         )
 
         self.layers[:, y, inc_layer_3_index, self._next_layer] = (
             factor_branch_3
-            * self.layers[
+            * self._scatter_layers[
                 :,
                 y_branch_3,
                 scat_index_branch_3,
-                self._current_layer,
             ]
         )
 
@@ -256,7 +224,10 @@ class TLM:
 
         # calculate next step incident and scattering
         for x in np.arange(self.x_max):
-            self._update_next_scattering(x)
+            for y in np.arange(self.y_max):
+                self._compute_scattering(x, y)
+
+        for x in np.arange(self.x_max):
             self._update_next_incident_horizontal(x)
 
         for y in np.arange(self.y_max):
@@ -272,7 +243,7 @@ class TLM:
             length and width.
         """
         incident_pressure = np.sum(
-            self.layers[:, :, self.incident_indices, self._current_layer],
+            self.layers[:, :, :, self._current_layer],
             axis=2,
         )
         """
@@ -283,4 +254,4 @@ class TLM:
 
         return np.sum(np.dstack((incident_pressure, scattering_pressure)), axis=2).T 
         """
-        return np.sum(np.dstack((incident_pressure, self.layers[:,:,8,self._current_layer])), axis=2).T
+        return incident_pressure.T

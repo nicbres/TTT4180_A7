@@ -1,4 +1,6 @@
+import imageio
 import matplotlib.colors as colors
+import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
@@ -8,7 +10,7 @@ from tlm.source import Source
 
 
 def harmonic_function(time: float):
-    return np.sin(2 * np.pi * 500 * time)
+    return np.cos(2 * np.pi * 171 * time)
 
 
 def impulse_function(time: float):
@@ -29,26 +31,42 @@ if __name__ == "__main__":
         length=2,
         width=0.2,
         sources=sources,
-        wavelength_delta_x_ratio=10,
+        wavelength_delta_x_ratio=20,
         reflection_coefficient_right=1.0,
     )
 
     fig, ax = plt.subplots()
 
-    norm_max = 0.05
+    norm_max = 0.35
     norm = colors.Normalize(vmin=-norm_max, vmax=norm_max)
-    im = ax.imshow(res_tlm.get_pressure_layer(), norm=norm)
+    colormap = plt.get_cmap('inferno')
+    scalar_mappable = cm.ScalarMappable(norm=norm, cmap=colormap)
+    #im = ax.imshow(res_tlm.get_pressure_layer(), norm=norm)
 
+    """
     def animate(*args, **kwargs):
-        for _ in np.arange(1):
+        for _ in np.arange(4):
             res_tlm.update()
         ax.clear()
-        im = ax.imshow(res_tlm.get_pressure_layer()[::-1,:], norm=norm)
+        pressure_layer = res_tlm.get_pressure_layer()[::-1, :]
+        if image_count < 100:
+            imageio.imwrite(f'./images/pipe_{image_count}', scalar_mappable.to_rgba(pressure_layer))
+            image_count += 1
+        im = ax.imshow(pressure_layer, norm=norm)
         return im,
+    """
 
+    for i in range(20):
+        for _ in np.arange(80):
+            res_tlm.update()
+        pressure_layer = res_tlm.get_pressure_layer()[::-1, :]
+        image = scalar_mappable.to_rgba(pressure_layer)
+        imageio.imwrite(f'./images/pipe_{i}.png', image)
 
+"""
     ani = animation.FuncAnimation(
         fig, animate, interval=5,
     )
 
     plt.show()
+"""
